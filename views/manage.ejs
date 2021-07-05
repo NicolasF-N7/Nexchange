@@ -1,12 +1,114 @@
 <!doctype html>
 <html>
  <head>
-   <title>Manage objects</title>
-   <link rel="stylesheet" href="stylesheets/common.css">
+   <title>Manage my objects</title>
+   <link rel="stylesheet" href="/stylesheets/common.css">
+   <link rel="stylesheet" href="/stylesheets/manage.css">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <script src="/javascripts/TokenManager.js"></script>
+   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
  </head>
  <body>
    <%- include('header.html'); -%>
-   <%- include('footer.html'); -%>
+   <div id="container">
+     <div id="tables">
+      <caption><h3>Your account</h3></caption>
+      <table>
+        <tr>
+          <td>Address</td>
+          <td id="accountAddress">0x0</td>
+        </tr><br>
+        <tr>
+          <td>Number of objects published</td>
+          <td id="nbObj">-1</td>
+        </tr>
+      </table>
+
+      <caption><h3>Your objects</h3></caption>
+      <table id="objTab">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Price / month</th>
+            <th>Pseudo</th>
+          </tr>
+        </thead id="objTabBody">
+        <tbody>
+        </tbody>
+      </table>
+      </div>
+      <div id="rightPane">
+        <button id="connectBtn" onclick="connect()">Connect to MetaMask</button>
+        <button id="refreshBtn" onclick="retrieveObjects()">Refresh</button>
+      </div>
+    </div>
+
+
+    <%- include('footer.html'); -%>
+   <script>
+    //Refresh data if metamask's user change
+
+
+     function displayTokenBalance(balance){
+       document.getElementById("nbObj").innerHTML = balance;
+     }
+
+     //Add a token in the table (i.e. a row)
+     function displayTokenID(tokID){
+       console.log("Adding token, ID = " + tokID);
+       let table = document.getElementById("objTab");
+
+       let row = table.insertRow();
+       let idCell = row.insertCell();
+        idCell.appendChild(document.createTextNode(tokID));
+        let nameCell = row.insertCell();
+        nameCell.appendChild(document.createTextNode("Lawn mower"));
+        let descCell = row.insertCell();
+        descCell.appendChild(document.createTextNode("Electrical, 4 blades..."));
+        let priceCell = row.insertCell();
+        priceCell.appendChild(document.createTextNode("30€"));
+        let pseudoCell = row.insertCell();
+        pseudoCell.appendChild(document.createTextNode("Boby"));
+     }
+
+     function displayTokens(nbTokens){
+       for(let i=0; i < nbTokens; i++){
+         gettokenOfOwnerByIndex(i, displayTokenID);
+       }
+     }
+
+     //Get and Display all tokens of the owner
+     function retrieveObjects(){
+       $("#objTabBody").remove();
+       getTokenBalance(displayTokens);
+     }
+
+     function retrieveInfos(){
+       let accAddr = getAccountAddr();
+       getTokenBalance(displayTokenBalance);
+       document.getElementById("accountAddress").innerHTML = accAddr;
+     }
+
+     function onConnection(){
+       retrieveInfos();
+       retrieveObjects();
+     }
+
+     function connect(){
+       try{
+         if (!metamaskConnect(onConnection)) {
+           alert("Please install MetaMask to use this dApp!");
+         }
+         document.getElementById("connectBtn").disabled = true;
+         document.getElementById("connectBtn").innerHTML = "Connected !";
+       }catch(err){
+         console.error("Connection failed: " + error);
+         document.getElementById("connectedMsg").innerHTML = "Connection failed :|";
+       }
+     }
+
+   </script>
  </body>
 </html>

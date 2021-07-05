@@ -1,13 +1,16 @@
 body {
   padding: 50px;
   font: 16px "Lucida Grande", Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 a {
   color: #b33c00;
 }
 
-.header{
+#header{
   background-color: #33cccc;
   display: block;
   position: fixed;
@@ -15,14 +18,39 @@ a {
   top: 0;
   width: 100%;
   text-align: center;
+  padding-bottom: 5px;
 }
 
-.footer{
+
+#footer{
   background-color: #33cccc;
-  display: block;
-  position: fixed;
+  margin-top: auto;
   left: 0;
   bottom: 0;
   width: 100%;
   text-align: center;
+  font-size: small;
+  margin-top: 5em;
+  flex: 0 0 50px;/*or just height:50px;*/
+  margin-top: auto;
+
+
 }
+
+/*#container{
+  overflow: auto
+}
+
+#footer{
+  background-color: #33cccc;
+  display: block;
+  position: relative;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  font-size: small;
+  margin-top: 5em;
+  height: 2em;
+  text-align: center;
+}*/

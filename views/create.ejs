@@ -2,34 +2,40 @@
 <html>
  <head>
    <title>Create offer</title>
-   <link rel="stylesheet" href="stylesheets/common.css">
-   <link rel="stylesheet" href="stylesheets/create.css">
+   <link rel="stylesheet" href="/stylesheets/common.css">
+   <link rel="stylesheet" href="/stylesheets/create.css">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <script src="/javascripts/TokenManager.js"></script>
  </head>
  <body>
    <%- include('header.html'); -%>
-   <p>Fill the data to create a new offer</p>
-   <form name="creationForm" action="/create" method="post" onsubmit="return validate()">
-     <label for="object">What object is it ?</label><br>
-     <input type="text" id="object" name="object" value=""><br>
+   <div id="container">
+     <h3>Fill the data to create a new offer</h3>
+     <button id="connectBtn" onclick="connect(displayConnected)">Connect to MetaMask</button>
 
-     <label for="desc">Tell us more about it's condition, the brand, how many years it have been used...</label><br>
-     <input type="text" id="desc" name="desc" value=""><br>
+     <form name="creationForm" action="/create" method="post" onsubmit="return validate()">
+       <label for="object">What object is it ?</label><br>
+       <input type="text" id="object" name="object" value="" required minlength="3" maxlength="30"><br>
 
-     <label for="photo">Photo</label><br>
-     <input type="file" id="photo" name="photo" value=""><br>
+       <label for="desc">Tell us more about it's condition, the brand, how many years it have been used...</label><br>
+       <input type="text" id="desc" name="desc" value="" required minlength="3" maxlength="30"><br>
 
-     <label for="price">Renting price per month</label><br>
-     <input type="number" id="price" name="price" value=""><br>
+       <label for="photo">Photo</label><br>
+       <input type="file" id="photo" name="photo" value=""><br>
 
-     <label for="name">Your name</label><br>
-     <input type="text" id="name" name="name" value=""><br>
-     <input type="submit" value="Submit !" onclick="validate()">
-   </form>
+       <label for="price">Renting price per month</label><br>
+       <input type="number" id="price" name="price" value="0" required min="0" max="1000">><br>
 
-   <p id="error">hey</p>
+       <label for="name">Your name</label><br>
+       <input type="text" id="name" name="name" value="" required minlength="3" maxlength="30">><br>
+       <input type="submit" value="Submit !" onclick="validate()">
+     </form>
+
+     <p id="error">hey</p>
+   </div>
    <%- include('footer.html'); -%>
    <script>
+
     function validate(){
       let valid = true;
       let error = document.getElementById("error").innerHTML;
@@ -47,15 +53,31 @@
       error = document.getElementById("error").innerHTML;
       let price = document.getElementById("price").value;
       if(price.length < 1){document.getElementById("error").innerHTML = error + "<br>The price is too low."; valid = false;}
-      else if(price.length > 30){document.getElementById("error").innerHTML = error + "<br>The price is too high."; valid = false;}
+      else if(price.length > 5){document.getElementById("error").innerHTML = error + "<br>The price is too high."; valid = false;}
 
       error = document.getElementById("error").innerHTML;
       let name = document.getElementById("name").value;
       if(name.length < 1){document.getElementById("error").innerHTML = error + "<br>Your name is too short."; valid = false;}
       else if(name.length > 30){document.getElementById("error").innerHTML = error + "<br>Your name is too long."; valid = false;}
 
-
+      if(valid){connect(mintToken);}
       return valid;
+    }
+
+    function displayConnected(){
+      document.getElementById("connectBtn").disabled = true;
+      document.getElementById("connectBtn").innerHTML = "Connected !";
+    }
+
+
+    function connect(callback){
+      try{
+        if (!metamaskConnect(callback)) {
+          alert("Please install MetaMask to use this dApp!");
+        }
+      }catch(err){
+        console.error("Connection failed: " + error);
+      }
     }
    </script>
  </body>
