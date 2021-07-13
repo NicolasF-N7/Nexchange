@@ -27,20 +27,22 @@
       <caption><h3>Your objects</h3></caption>
       <table id="objTab">
         <thead>
-          <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Price / month</th>
-            <th>Pseudo</th>
-          </tr>
-        </thead id="objTabBody">
-        <tbody>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Price / month</th>
+              <th>Pseudo</th>
+            </tr>
+        </thead>
+        <tbody id="objTabBody">
+            <tr>
+            </tr>
         </tbody>
       </table>
       </div>
       <div id="rightPane">
-        <button id="connectBtn" onclick="connect()">Connect to MetaMask</button>
+        <button id="connectBtn" onclick="connect(onConnection)">Connect to MetaMask</button>
         <button id="refreshBtn" onclick="retrieveObjects()">Refresh</button>
       </div>
     </div>
@@ -48,13 +50,14 @@
 
     <%- include('footer.html'); -%>
    <script>
-    //Refresh data if metamask's user change
-
+      //Refresh data if metamask's user change
+      ethereum.on('accountsChanged', (chainId) => {
+        connect(onConnection);
+      });
 
      function displayTokenBalance(balance){
        document.getElementById("nbObj").innerHTML = balance;
      }
-
      //Add a token in the table (i.e. a row)
      function displayTokenID(tokID){
        console.log("Adding token, ID = " + tokID);
@@ -72,19 +75,25 @@
         let pseudoCell = row.insertCell();
         pseudoCell.appendChild(document.createTextNode("Boby"));
      }
-
+     //Display nbTokens first tokens from connected account
      function displayTokens(nbTokens){
        for(let i=0; i < nbTokens; i++){
          gettokenOfOwnerByIndex(i, displayTokenID);
        }
      }
+     //delete all rows in the objects table
+     function emptyTable(){
+       let table = document.getElementById("objTab").tBodies[0];
+       table.innerHTML = "";
+       table.insertRow();
 
+     }
      //Get and Display all tokens of the owner
      function retrieveObjects(){
-       $("#objTabBody").remove();
+       emptyTable();
        getTokenBalance(displayTokens);
      }
-
+     //Get and display account infos (addr + token balance)
      function retrieveInfos(){
        let accAddr = getAccountAddr();
        getTokenBalance(displayTokenBalance);
@@ -94,19 +103,8 @@
      function onConnection(){
        retrieveInfos();
        retrieveObjects();
-     }
-
-     function connect(){
-       try{
-         if (!metamaskConnect(onConnection)) {
-           alert("Please install MetaMask to use this dApp!");
-         }
-         document.getElementById("connectBtn").disabled = true;
-         document.getElementById("connectBtn").innerHTML = "Connected !";
-       }catch(err){
-         console.error("Connection failed: " + error);
-         document.getElementById("connectedMsg").innerHTML = "Connection failed :|";
-       }
+       document.getElementById("connectBtn").disabled = true;
+       document.getElementById("connectBtn").innerHTML = "Connected !";
      }
 
    </script>

@@ -1,9 +1,10 @@
 #error{
    background-color: #ff6666;
-   display: inline-block;
+   display: none;
    border: solid;
    border-width: 3px;
    border-color: black;
    border-radius: 5px;
    padding: 10px;
+   text-align: center;
  }

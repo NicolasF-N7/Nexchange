@@ -6,6 +6,7 @@
    <link rel="stylesheet" href="/stylesheets/create.css">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <script src="/javascripts/TokenManager.js"></script>
+   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
  </head>
  <body>
    <%- include('header.html'); -%>
@@ -13,9 +14,9 @@
      <h3>Fill the data to create a new offer</h3>
      <button id="connectBtn" onclick="connect(displayConnected)">Connect to MetaMask</button>
 
-     <form name="creationForm" action="/create" method="post" onsubmit="return validate()">
-       <label for="object">What object is it ?</label><br>
-       <input type="text" id="object" name="object" value="" required minlength="3" maxlength="30"><br>
+     <form id="creationForm" name="creationForm" action="/create" method="post" >
+       <label for="item">What object is it ?</label><br>
+       <input type="text" id="item" name="item" value="" required minlength="3" maxlength="30"><br>
 
        <label for="desc">Tell us more about it's condition, the brand, how many years it have been used...</label><br>
        <input type="text" id="desc" name="desc" value="" required minlength="3" maxlength="30"><br>
@@ -24,24 +25,47 @@
        <input type="file" id="photo" name="photo" value=""><br>
 
        <label for="price">Renting price per month</label><br>
-       <input type="number" id="price" name="price" value="0" required min="0" max="1000">><br>
+       <input type="number" id="price" name="price" value="0" required min="0" max="1000"><br>
 
        <label for="name">Your name</label><br>
-       <input type="text" id="name" name="name" value="" required minlength="3" maxlength="30">><br>
-       <input type="submit" value="Submit !" onclick="validate()">
+       <input type="text" id="name" name="name" value="" required minlength="3" maxlength="30"><br>
+       <input type="button" id="submitBtn" value="Submit !" onclick="checkFormAndSubmit()">
      </form>
 
-     <p id="error">hey</p>
+     <p id="error" >hey</p>
    </div>
    <%- include('footer.html'); -%>
    <script>
+     ethereum.on('accountsChanged', (chainId) => {
+       connect(displayConnected);
+     });
 
-    function validate(){
+     function checkFormAndSubmit(){
+       if(isValidForm()){
+         connect(function(){//Callback function, i.e. when connected
+           mintToken();
+           sendForm(accountAddr);
+         });
+       }
+     }
+
+    function sendForm(accAddr){
+      let formData = $("#creationForm").serialize();
+      formData = formData + "&accountAddr=" + accAddr;
+
+      //Submit Form
+      $.post("create", formData, function (data) {console.log("Successfully sent !");});
+      $("#submitBtn").prop("value", "Perfect :)");
+      $("#submitBtn").prop("disabled", true);
+    }
+
+
+    function isValidForm(){
       let valid = true;
-      let error = document.getElementById("error").innerHTML;
-      error = "";
+      document.getElementById("error").innerHTML = "";
+      document.getElementById("error").style.display = 'none';
 
-      let obj = document.getElementById("object").value;
+      let obj = document.getElementById("item").value;
       if(obj.length < 1){document.getElementById("error").innerHTML = "The object's name is too short."; valid = false;}
       else if(obj.length > 30){document.getElementById("error").innerHTML = "The object's name is too long."; valid = false;}
 
@@ -60,7 +84,9 @@
       if(name.length < 1){document.getElementById("error").innerHTML = error + "<br>Your name is too short."; valid = false;}
       else if(name.length > 30){document.getElementById("error").innerHTML = error + "<br>Your name is too long."; valid = false;}
 
-      if(valid){connect(mintToken);}
+      if(!valid){
+        document.getElementById("error").style.display = 'block';
+      }
       return valid;
     }
 
@@ -69,16 +95,6 @@
       document.getElementById("connectBtn").innerHTML = "Connected !";
     }
 
-
-    function connect(callback){
-      try{
-        if (!metamaskConnect(callback)) {
-          alert("Please install MetaMask to use this dApp!");
-        }
-      }catch(err){
-        console.error("Connection failed: " + error);
-      }
-    }
    </script>
  </body>
 </html>

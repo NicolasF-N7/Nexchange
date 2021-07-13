@@ -9,10 +9,17 @@ let tokenMngrFctnSelector = {
   safeTransferFrom: "0x42842e0e",
   balanceOf: "0x70a08231",
 }
+let contractAddr = "0x2A7FfeA65a9Db35f600456730399A3530A0492Fe";
+
 let accountAddr = "";
 ethereum.on('chainChanged', (chainId) => {
-  window.location.reload();//recommended
+  window.location.reload();
 });
+
+
+async function getTransac(hash){
+  await ethereum.request({ method: 'eth_getTransactionByHash', params:  [hash]});
+}
 
 function handleAccountsChanged(accounts) {
   if (accounts.length === 0) {
@@ -46,6 +53,17 @@ function metamaskConnect(callback){
   }
 }
 
+function connect(callback){
+  try{
+    if (!metamaskConnect(callback)) {
+      alert("Please install MetaMask to use this dApp!");
+    }
+  }catch(err){
+    console.error("Connection failed: " + error);
+    alert("Connection failed :/");
+  }
+}
+//Eth balance
 async function getBalance() {
   if (accountAddr == "") {return false;}
   let balance = -1;
@@ -67,13 +85,15 @@ function mintToken(){
   let mintData = tokenMngrFctnSelector.mint;
   let rawTransaction = {
     from: accountAddr,
-    to: "0x83B33907DE3469B030f058B06bA893E5352B5ec6",
+    to: contractAddr,
     gas: "80000",
     data: mintData,
   };
   ethereum.request({ method: 'eth_sendTransaction', params:  [rawTransaction]})
   .then((res) => {
     console.log("Token minted !");
+    console.log("Res : " + JSON.stringify(res));
+    //0x0fbfdb5da7d21e204cb9cf98a812dfd390a3fcbb41bd9759ad632842cf90aaee
   })
   .catch((err) => {
     if (err.code === 4001) {
@@ -93,12 +113,14 @@ function getTokenBalance(callback){
 
   let rawTransaction = {
     from: accountAddr,
-    to: "0x83B33907DE3469B030f058B06bA893E5352B5ec6",
+    to: contractAddr,
     data: balanceData,
   };
   ethereum.request({ method: 'eth_call', params:  [rawTransaction, "latest"]})
   .then((res) => {
     let balance = parseInt(res, 16);
+    if(isNaN(balance))
+      balance = "0 (Check network)";
     callback(balance);
   })
   .catch((err) => {
@@ -121,7 +143,7 @@ function gettokenOfOwnerByIndex(index, callback){
 //FROM ETHERSCAN: 0x2f745c59000000000000000000000000343da20c010148b4e4d4d3203e7c445e0a7468a40000000000000000000000000000000000000000000000000000000000000001
   let rawTransaction = {
     from: accountAddr,
-    to: "0x83B33907DE3469B030f058B06bA893E5352B5ec6",
+    to: contractAddr,
     data: tokData,
   };
   ethereum.request({ method: 'eth_call', params:  [rawTransaction, "latest"]})
