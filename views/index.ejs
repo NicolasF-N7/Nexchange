@@ -3,16 +3,144 @@
   <head>
     <title>Home</title>
     <link rel="stylesheet" href="stylesheets/common.css">
+    <link rel="stylesheet" href="/stylesheets/manage.css">
+    <link rel="stylesheet" href="/stylesheets/table.css">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="/javascripts/TokenManager.js"></script>
+    <script src="/javascripts/Ipfs.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js"></script>
+    <script src="https://bundle.run/buffer@6.0.3"></script>
   </head>
   <body>
     <%- include('header.html'); -%>
-    <p>Length: <%=data.length%></p>
-    <ul>
-      <%  for(let i=0; i < data.length; i++){%>
-        <li>Title: <%= data[i].Title %> </li>
-      <%}%>
-    </ul>
+    <div id="container">
+      <div id="tablePane">
+        <caption><h3>Ask for objects</h3></caption>
+        <table id="objTab">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Picture</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Price / month</th>
+              <th>Owner's pseudo</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="objTabBody">
+          </tbody>
+        </table>
+      </div>
+      <div id="rightPane">
+        <button id="connectBtn" disabled="true" disabled="true" onclick="connect(onConnection)">Connect to MetaMask</button>
+        <button id="refreshBtn" disabled="true" onclick="getAndDisplayItems()">Refresh</button>
+      </div>
+    </div>
+
     <%- include('footer.html'); -%>
+    <script>
+      let ipfsNode;
+
+      document.addEventListener('DOMContentLoaded', async() => {
+        //Connection to IPFS
+        ipfsNode = await Ipfs.create({ repo: 'ipfs-' + Math.random() });
+        const status = ipfsNode.isOnline() ? 'online' : 'offline';
+        console.log(`IPFS Node status: ${status}`);
+        document.getElementById("connectBtn").disabled = false;
+      })
+
+      ethereum.on('accountsChanged', (chainId) => {
+        if(getAccountAddr() != "") {//Sauf au premier login car connect déjà appelé par le bouton
+          connect(onConnection);
+        }
+      });
+
+      function disableAskBtn(tokenId){
+        let btnId = "AskTokenBtn" + tokenId;
+        let btn = document.getElementById(btnId);
+        btn.disabled = true;
+        btn.innerHTML = "Asked";
+      }
+
+      function askToken(tokenId){
+        let value = prompt("Please enter the value of your proposition (ETH)", "1");
+        value = value*10**18;
+        createProposal(tokenId, value.toString(), () => {disableAskBtn(tokenId)});
+        console.log(tokenId + " asked !");
+      }
+
+      function displayToken(tokenData){
+        let table = document.getElementById("objTab");
+        let row = table.insertRow();
+        //ID
+        row.insertCell().appendChild(document.createTextNode(tokenData.tokenId));
+        //Picture
+        let img = document.createElement('img');
+        img.id = 'ItemPicture' + tokenData.tokenId;
+        loadFile(ipfsNode, tokenData.pictureCID).then((imgData) => {
+          img.src = imgData;
+        });
+        row.insertCell().appendChild(img);
+        //Name
+        let itemLink = document.createElement('a');
+        itemLink.innerHTML = tokenData.itemName;
+        //getTokenURI(tokenData.tokenId, function(val){itemLink.href = val;})
+        itemLink.href = 'http://localhost:3000/nexchange/tokens/' + tokenData.tokenId;
+        row.insertCell().appendChild(itemLink);
+        //Description
+        row.insertCell().appendChild(document.createTextNode(tokenData.itemDesc));
+        //Price
+        row.insertCell().appendChild(document.createTextNode(tokenData.itemPrice + "€"));
+        //Owner's pseudo
+        row.insertCell().appendChild(document.createTextNode(tokenData.userName));
+
+        //Ask button
+        let address = getAccountAddr();
+        if(address == tokenData.accountAddr){
+          row.insertCell().appendChild(document.createTextNode("Already yours."));
+        }else{
+          let askBtn = document.createElement("button");
+          askBtn.innerHTML = "Ask for !";
+          askBtn.id = "AskTokenBtn" + tokenData.tokenId;
+          askBtn.onclick = function() {askToken(tokenData.tokenId)};
+          row.insertCell().appendChild(askBtn);
+        }
+      }
+
+      function displayTokens(tokensData){
+        for(let i=0; i < tokensData.length; i++){
+          displayToken(tokensData[i]);
+        }
+      }
+
+      function emptyTable(){
+        let table = document.getElementById("objTab").tBodies[0];
+        table.innerHTML = "";
+        table.insertRow();
+      }
+
+      function getTokensData(){
+        //$.get("manage/tokensdata", requestData, function (data, status, jqXHR) {console.log("Data: " + data);console.log("status: " + status);console.log("jqXHR: " + jqXHR);}, "json");
+        return $.get("alltokensdata", {},"json");
+      }
+
+      function getAndDisplayItems(){
+        emptyTable();
+        getTokensData()
+        .done(function(tokensData){
+          displayTokens(tokensData);
+        });
+      }
+
+      function onConnection(){
+        getAndDisplayItems();
+        document.getElementById("connectBtn").disabled = true;
+        document.getElementById("connectBtn").innerHTML = "Connected !";
+        document.getElementById("refreshBtn").disabled = false;
+      }
+
+    </script>
   </body>
 </html>

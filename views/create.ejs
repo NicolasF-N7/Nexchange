@@ -6,53 +6,100 @@
    <link rel="stylesheet" href="/stylesheets/create.css">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <script src="/javascripts/TokenManager.js"></script>
+   <script src="/javascripts/Ipfs.js"></script>
    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js"></script>
+   <script src="https://bundle.run/buffer@6.0.3"></script>
  </head>
  <body>
    <%- include('header.html'); -%>
    <div id="container">
      <h3>Fill the data to create a new offer</h3>
      <button id="connectBtn" onclick="connect(displayConnected)">Connect to MetaMask</button>
-
+     <br>
      <form id="creationForm" name="creationForm" action="/create" method="post" >
-       <label for="item">What object is it ?</label><br>
-       <input type="text" id="item" name="item" value="" required minlength="3" maxlength="30"><br>
+       <label for="itemName">What object is it ?</label><br>
+       <input type="text" id="itemName" name="itemName" value="" required minlength="3" maxlength="30"><br>
 
-       <label for="desc">Tell us more about it's condition, the brand, how many years it have been used...</label><br>
-       <input type="text" id="desc" name="desc" value="" required minlength="3" maxlength="30"><br>
+       <label for="itemDesc">Tell us more about it's condition, the brand, how many years it have been used...</label><br>
+       <input type="text" id="itemDesc" name="itemDesc" value="" required minlength="3" maxlength="30"><br>
 
-       <label for="photo">Photo</label><br>
-       <input type="file" id="photo" name="photo" value=""><br>
+       <div>
+         <label for="itemPhoto">Picture</label><br>
+         <input type="file" id="itemPhoto" name="itemPhoto" value="" accept="image/png, image/jpeg"><br>
+         <p id="load_img_text"></p>
+         <img id="img_display">
+       </div>
+       <!-- accept="image/png, image/jpeg" -->
+       <label for="itemPrice">Renting price per month</label><br>
+       <input type="number" id="itemPrice" name="itemPrice" value="0" required min="0" max="1000"><br>
 
-       <label for="price">Renting price per month</label><br>
-       <input type="number" id="price" name="price" value="0" required min="0" max="1000"><br>
-
-       <label for="name">Your name</label><br>
-       <input type="text" id="name" name="name" value="" required minlength="3" maxlength="30"><br>
+       <label for="userName">Your name</label><br>
+       <input type="text" id="userName" name="userName" value="" required minlength="3" maxlength="30"><br>
        <input type="button" id="submitBtn" value="Submit !" onclick="checkFormAndSubmit()">
+
+       <input type="hidden" id="pictureCID" name="pictureCID">
      </form>
 
      <p id="error" >hey</p>
    </div>
    <%- include('footer.html'); -%>
    <script>
-     ethereum.on('accountsChanged', (chainId) => {
-       connect(displayConnected);
+    let ipfsNode;
+
+    document.addEventListener('DOMContentLoaded', async() => {
+      //Connection to IPFS
+      ipfsNode = await Ipfs.create({ repo: 'ipfs-' + Math.random() });
+      let imgInput = document.getElementById("itemPhoto");
+      imgInput.addEventListener("change", onImgSelected, false);
+
+       const status = ipfsNode.isOnline() ? 'online' : 'offline';
+       console.log(`IPFS Node status: ${status}`);
+     })
+
+    ethereum.on('accountsChanged', (chainId) => {
+      if(getAccountAddr() != "") {//Sauf au premier login car connect déjà appelé par le bouton
+        connect(onConnection);
+      }
      });
 
-     function checkFormAndSubmit(){
+    function checkFormAndSubmit(){
        if(isValidForm()){
-         connect(function(){//Callback function, i.e. when connected
-           mintToken();
-           sendForm(accountAddr);
+         connect(function(){//when connected : MintToken
+           mintToken(function(){
+             sendForm(accountAddr);//if mint successful: redirect to manage page
+             window.location.replace('/manage');
+           });
          });
        }
      }
 
+    function onImgSelected(){
+       //Retrieve picture info from Form
+       let imgBlob = document.getElementById("itemPhoto").files[0];
+       if(imgBlob != undefined){
+         //Inform user that img is uploading
+         document.getElementById("load_img_text").innerHTML = "Uploading...";
+         //start uploading
+         uploadFile(ipfsNode, imgBlob, onImgUploaded);
+       }
+    }
+
+    function onImgUploaded(cid){
+      //Adding cid to the form data
+      document.getElementById("pictureCID").value = cid;
+      //Load and display image from IPFS to the user
+      loadFile(ipfsNode, cid).then((img) =>{
+        document.getElementById("img_display").src = img;
+        document.getElementById("load_img_text").innerHTML = "Uploaded !";
+        console.log("Picture loaded from IPFS");
+      });
+    }
+
     function sendForm(accAddr){
       let formData = $("#creationForm").serialize();
-      formData = formData + "&accountAddr=" + accAddr;
-
+      formData = formData + "&accountAddr=" + accAddr
+      console.log(formData);
       //Submit Form
       $.post("create", formData, function (data) {console.log("Successfully sent !");});
       $("#submitBtn").prop("value", "Perfect :)");
@@ -65,22 +112,22 @@
       document.getElementById("error").innerHTML = "";
       document.getElementById("error").style.display = 'none';
 
-      let obj = document.getElementById("item").value;
+      let obj = document.getElementById("itemName").value;
       if(obj.length < 1){document.getElementById("error").innerHTML = "The object's name is too short."; valid = false;}
       else if(obj.length > 30){document.getElementById("error").innerHTML = "The object's name is too long."; valid = false;}
 
       error = document.getElementById("error").innerHTML;
-      let desc = document.getElementById("desc").value;
+      let desc = document.getElementById("itemDesc").value;
       if(desc.length < 1){document.getElementById("error").innerHTML = error + "<br>The description is too short."; valid = false;}
       else if(desc.length > 30){document.getElementById("error").innerHTML = "<br>The object's name is too long."; valid = false;}
 
       error = document.getElementById("error").innerHTML;
-      let price = document.getElementById("price").value;
+      let price = document.getElementById("itemPrice").value;
       if(price.length < 1){document.getElementById("error").innerHTML = error + "<br>The price is too low."; valid = false;}
       else if(price.length > 5){document.getElementById("error").innerHTML = error + "<br>The price is too high."; valid = false;}
 
       error = document.getElementById("error").innerHTML;
-      let name = document.getElementById("name").value;
+      let name = document.getElementById("userName").value;
       if(name.length < 1){document.getElementById("error").innerHTML = error + "<br>Your name is too short."; valid = false;}
       else if(name.length > 30){document.getElementById("error").innerHTML = error + "<br>Your name is too long."; valid = false;}
 

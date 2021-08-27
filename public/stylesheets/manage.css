@@ -1,7 +1,7 @@
 table, th, td {
   border: 1px solid black;
   border-spacing : 0px;
-  border-collapse: separate; 
+  border-collapse: separate;
   border-color: #33cccc;
   /*border-collapse: collapse; ISSUE with collapse when adding elements with javascript: border width not the same everywhere*/
 }
@@ -10,11 +10,9 @@ th, td {
   padding: 10px;
 }
 
-#rightPane{
-  float:right;
-  padding-top: 30px;
-}
+tr:nth-child(even) {background-color: #f2f2f2;}
 
-#tables{
-  float:left;
+img {
+  width: 100px;
+  height: auto;
 }

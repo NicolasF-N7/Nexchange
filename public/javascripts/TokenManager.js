@@ -8,6 +8,10 @@ let tokenMngrFctnSelector = {
   burnToken: "0x7b47ec1a",
   safeTransferFrom: "0x42842e0e",
   balanceOf: "0x70a08231",
+  getProposal: "0xc7f758a8",
+  createProposal: "0x5a43dc00",
+  acceptProposal: "0x46464a7b",
+  tokenURI: "0xc87b56dd",
 }
 let contractAddr = "0x2A7FfeA65a9Db35f600456730399A3530A0492Fe";
 
@@ -79,8 +83,8 @@ async function getBalance() {
   return balance;
 }
 
-//Add callback to send data to the DB when mint finished
-function mintToken(){
+//Call callback if mint successful
+function mintToken(callback){
   if (accountAddr == "") {return false;}
   let mintData = tokenMngrFctnSelector.mint;
   let rawTransaction = {
@@ -93,11 +97,10 @@ function mintToken(){
   .then((res) => {
     console.log("Token minted !");
     console.log("Res : " + JSON.stringify(res));
-    //0x0fbfdb5da7d21e204cb9cf98a812dfd390a3fcbb41bd9759ad632842cf90aaee
+    callback();
   })
   .catch((err) => {
-    if (err.code === 4001) {
-      // EIP-1193 userRejectedRequest error
+    if (err.code === 4001) {// EIP-1193 userRejectedRequest error
       // If this happens, the user rejected the connection request.
       console.log('Please connect to MetaMask.');
     } else {
@@ -150,6 +153,105 @@ function gettokenOfOwnerByIndex(index, callback){
   .then((res) => {
     let tokID = parseInt(res, 16);
     callback(tokID);
+  })
+  .catch((err) => {
+    if (err.code === 4001) {console.log('Please connect to MetaMask.');}
+    else {console.error(err);}
+  });
+}
+
+function getProposal(tokenId, callback){
+  if (accountAddr == "") {return false;}
+  let tokenIdParam = (parseInt(tokenId, 10).toString(16)).padStart(64, "0");
+  let propData = tokenMngrFctnSelector.getProposal + tokenIdParam;
+  //0xc7f758a80000000000000000000000000000000000000000000000000000000000000012
+  let rawTransaction = {
+    from: accountAddr,
+    to: contractAddr,
+    data: propData,
+  };
+  ethereum.request({ method: 'eth_call', params:  [rawTransaction, "latest"]})
+  .then((res) => {
+    let value = parseInt(res, 16);
+    callback(value);
+  })
+  .catch((err) => {
+    if (err.code === 4001) {console.log('Please connect to MetaMask.');}
+    else {console.error(err);}
+  });
+}
+
+function createProposal(tokenId, val, callback){
+  if (accountAddr == "") {return false;}
+  let tokenIdParam = (parseInt(tokenId, 10).toString(16)).padStart(64, "0");
+  let valueHex = '0x' + Number(val).toString(16);
+  let createPropData = tokenMngrFctnSelector.createProposal + tokenIdParam;
+  let rawTransaction = {
+    from: accountAddr,
+    to: contractAddr,
+    data: createPropData,
+    value: valueHex,
+  };
+  ethereum.request({ method: 'eth_sendTransaction', params:  [rawTransaction]})
+  .then((res) => {
+    console.log("Proposition created !");
+    callback();
+  })
+  .catch((err) => {
+    if (err.code === 4001) {// EIP-1193 userRejectedRequest error
+      // If this happens, the user rejected the connection request.
+      console.log('Please connect to MetaMask.');
+    } else {
+      console.error(err);
+    }
+  });
+}
+
+function acceptProposal(tokenId, accept, callback){
+  if (accountAddr == "") {return false;}
+  let acceptParam;
+  if(accept){
+    acceptParam = "1".padStart(64, "0");
+  }else{
+    acceptParam = "0".padStart(64, "0");
+  }
+  let tokenIdParam = (parseInt(tokenId, 10).toString(16)).padStart(64, "0");
+  let acceptData = tokenMngrFctnSelector.acceptProposal + acceptParam + tokenIdParam;
+  let rawTransaction = {
+    from: accountAddr,
+    to: contractAddr,
+    data: acceptData,
+  };
+  console.log(rawTransaction);
+  ethereum.request({ method: 'eth_sendTransaction', params:  [rawTransaction]})
+  .then((res) => {
+    console.log("Proposition accepted / rejected !");
+    callback();
+  })
+  .catch((err) => {
+    if (err.code === 4001) {// EIP-1193 userRejectedRequest error
+      // If this happens, the user rejected the connection request.
+      console.log('Please connect to MetaMask.');
+    } else {
+      console.error(err);
+    }
+  });
+}
+
+function getTokenURI(tokenId, callback){
+  if (accountAddr == "") {return false;}
+  let tokenIdParam = (parseInt(tokenId, 10).toString(16)).padStart(64, "0");
+  let getUriData = tokenMngrFctnSelector.tokenURI + tokenIdParam;
+  //0xc7f758a80000000000000000000000000000000000000000000000000000000000000012
+  let rawTransaction = {
+    from: accountAddr,
+    to: contractAddr,
+    data: getUriData,
+  };
+  ethereum.request({ method: 'eth_call', params:  [rawTransaction, "latest"]})
+  .then((res) => {
+    console.log(res);
+    callback(res);
   })
   .catch((err) => {
     if (err.code === 4001) {console.log('Please connect to MetaMask.');}

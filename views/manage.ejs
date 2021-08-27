@@ -4,14 +4,18 @@
    <title>Manage my objects</title>
    <link rel="stylesheet" href="/stylesheets/common.css">
    <link rel="stylesheet" href="/stylesheets/manage.css">
+   <link rel="stylesheet" href="/stylesheets/table.css">
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <script src="/javascripts/TokenManager.js"></script>
+   <script src="/javascripts/Ipfs.js"></script>
    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js"></script>
+   <script src="https://bundle.run/buffer@6.0.3"></script>
  </head>
  <body>
    <%- include('header.html'); -%>
    <div id="container">
-     <div id="tables">
+     <div id="tablePane">
       <caption><h3>Your account</h3></caption>
       <table>
         <tr>
@@ -29,10 +33,13 @@
         <thead>
             <tr>
               <th>ID</th>
+              <th>Picture</th>
               <th>Name</th>
               <th>Description</th>
               <th>Price / month</th>
               <th>Pseudo</th>
+              <th>Proposition value (ETH)</th>
+              <th>Action</th>
             </tr>
         </thead>
         <tbody id="objTabBody">
@@ -42,57 +49,114 @@
       </table>
       </div>
       <div id="rightPane">
-        <button id="connectBtn" onclick="connect(onConnection)">Connect to MetaMask</button>
-        <button id="refreshBtn" onclick="retrieveObjects()">Refresh</button>
+        <button id="connectBtn" disabled="true" onclick="connect(onConnection)">Connect to MetaMask</button>
+        <button id="refreshBtn" disabled="true" onclick="retrieveObjects()">Refresh</button>
       </div>
     </div>
 
 
     <%- include('footer.html'); -%>
    <script>
+       let ipfsNode;
+
+       document.addEventListener('DOMContentLoaded', async() => {
+         //Connection to IPFS
+         ipfsNode = await Ipfs.create({ repo: 'ipfs-' + Math.random() });
+         const status = ipfsNode.isOnline() ? 'online' : 'offline';
+         console.log(`IPFS Node status: ${status}`);
+         document.getElementById("connectBtn").disabled = false;
+       })
       //Refresh data if metamask's user change
       ethereum.on('accountsChanged', (chainId) => {
-        connect(onConnection);
+        if(getAccountAddr() != "") {//Sauf au premier login car connect déjà appelé par le bouton
+          connect(onConnection);
+        }
       });
 
      function displayTokenBalance(balance){
        document.getElementById("nbObj").innerHTML = balance;
      }
-     //Add a token in the table (i.e. a row)
-     function displayTokenID(tokID){
-       console.log("Adding token, ID = " + tokID);
-       let table = document.getElementById("objTab");
+     function disableActionBtn(tokenId, accepted){
+       let acceptBtnId = "AcceptBtn" + tokenId;
+       let acceptBtn = document.getElementById(acceptBtnId);
+       acceptBtn.disabled = true;
+       if(!accepted) acceptBtn.innerHTML = "_";
 
+       let rejectBtnId = "RejectBtn" + tokenId;
+       let rejectBtn = document.getElementById(rejectBtnId);
+       rejectBtn.disabled = true;
+       if(accepted) rejectBtn.innerHTML = "_";
+     }
+     //Add a token in the table (i.e. a row)
+     function displayToken(tokenData){
+       let table = document.getElementById("objTab");
        let row = table.insertRow();
-       let idCell = row.insertCell();
-        idCell.appendChild(document.createTextNode(tokID));
-        let nameCell = row.insertCell();
-        nameCell.appendChild(document.createTextNode("Lawn mower"));
-        let descCell = row.insertCell();
-        descCell.appendChild(document.createTextNode("Electrical, 4 blades..."));
-        let priceCell = row.insertCell();
-        priceCell.appendChild(document.createTextNode("30€"));
-        let pseudoCell = row.insertCell();
-        pseudoCell.appendChild(document.createTextNode("Boby"));
+       //ID
+       row.insertCell().appendChild(document.createTextNode(tokenData.tokenId));
+       //Picture
+       let img = document.createElement('img');
+       img.id = 'ItemPicture' + tokenData.tokenId;
+       loadFile(ipfsNode, tokenData.pictureCID).then((imgData) => {
+         img.src = imgData;
+       });
+       row.insertCell().appendChild(img);
+       //Name
+       row.insertCell().appendChild(document.createTextNode(tokenData.itemName));
+       //Desc
+       row.insertCell().appendChild(document.createTextNode(tokenData.itemDesc));
+       //Price
+       row.insertCell().appendChild(document.createTextNode(tokenData.itemPrice + "€"));
+       //Name
+       row.insertCell().appendChild(document.createTextNode(tokenData.userName));
+       //proposals
+       row.insertCell().appendChild(document.createTextNode(tokenData.proposal));
+       //Action button
+       if(tokenData.proposal != "_"){
+         let div = document.createElement("div");
+         let yesBtn = document.createElement("button"); yesBtn.innerHTML = "V"; yesBtn.id = "AcceptBtn" + tokenData.tokenId;
+         let noBtn = document.createElement("button"); noBtn.innerHTML = "X"; noBtn.id = "RejectBtn" + tokenData.tokenId;
+         yesBtn.onclick = function() {acceptProposal(tokenData.tokenId, true, function(){disableActionBtn(tokenData.tokenId, true)})};
+         noBtn.onclick = function() {acceptProposal(tokenData.tokenId, false, function(){disableActionBtn(tokenData.tokenId, false)})};
+         div.appendChild(yesBtn);
+         div.appendChild(noBtn);
+         row.insertCell().appendChild(div);
+       }else{
+         row.insertCell().appendChild(document.createTextNode("_"));
+       }
+
      }
      //Display nbTokens first tokens from connected account
-     function displayTokens(nbTokens){
-       for(let i=0; i < nbTokens; i++){
-         gettokenOfOwnerByIndex(i, displayTokenID);
+     function displayTokens(tokensData){
+       for(let i=0; i < tokensData.length; i++){
+         getProposal(tokensData[i].tokenId, function(propValue){
+           let value = propValue*(10**(-18));
+           if (value == "0"){value = "_";}
+           tokensData[i].proposal = value;
+           displayToken(tokensData[i]);
+         })
+
        }
+     }
+     //Retrieve tokens data from server's DB (ajax call)
+     function getTokensData(accAddr){
+       let requestData = {accountAddr: accAddr};
+       //$.get("manage/tokensdata", requestData, function (data, status, jqXHR) {console.log("Data: " + data);console.log("status: " + status);console.log("jqXHR: " + jqXHR);}, "json");
+       return $.get("manage/tokensdata", requestData,"json")
      }
      //delete all rows in the objects table
      function emptyTable(){
        let table = document.getElementById("objTab").tBodies[0];
        table.innerHTML = "";
        table.insertRow();
-
      }
      //Get and Display all tokens of the owner
      function retrieveObjects(){
        emptyTable();
-       getTokenBalance(displayTokens);
-     }
+       getTokensData(getAccountAddr())
+       .done(function(tokensData){
+         displayTokens(tokensData);
+       });
+    }
      //Get and display account infos (addr + token balance)
      function retrieveInfos(){
        let accAddr = getAccountAddr();
@@ -105,6 +169,7 @@
        retrieveObjects();
        document.getElementById("connectBtn").disabled = true;
        document.getElementById("connectBtn").innerHTML = "Connected !";
+       document.getElementById("refreshBtn").disabled = false;
      }
 
    </script>
